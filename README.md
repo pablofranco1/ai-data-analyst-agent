@@ -2,6 +2,8 @@
 
 Agente que responde preguntas sobre un dataset escribiendo y ejecutando su propio código Python. El código se ejecuta en un contenedor Docker aislado, así que nunca toca la máquina anfitriona.
 
+![Demo](docs/demo.gif)
+
 ## Cómo funciona
 
 1. El usuario pasa un CSV y una pregunta.
@@ -64,10 +66,25 @@ Crea un archivo `.env` con:
 ANTHROPIC_API_KEY=tu_api_key
 ```
 
+## Uso
+
+Interfaz web:
+
+```
+streamlit run app.py
+```
+
+Desde terminal:
+
+```
+python agent.py data/tips.csv "tu pregunta"
+```
+
 ## Estructura
 
+- `app.py`: interfaz web con Streamlit
 - `agent.py`: bucle del agente y uso de herramientas
 - `sandbox.py`: ejecución aislada en Docker
 - `test_sandbox.py`: pruebas de seguridad del sandbox
 - `Dockerfile`: imagen del sandbox
-- `data/`: datasets de
+- `data/`: datasets de ejemplo
