@@ -19,6 +19,7 @@ Para analizarlo, escribe código Python y ejecútalo con la herramienta run_pyth
 Tienes pandas y matplotlib. Guarda los gráficos como PNG en /output.
 Cada ejecución empieza desde cero: carga los datos e importa las librerías en cada bloque.
 Si el código falla, lee el error y corrígelo.
+No menciones rutas de archivos: los gráficos se muestran al usuario automáticamente.
 Cuando tengas la respuesta, explica las conclusiones en español, de forma breve."""
 
 TOOLS = [{
@@ -32,15 +33,17 @@ TOOLS = [{
 }]
 
 
-def ask(dataset, question, max_steps=10):
+def run_agent(dataset, question, max_steps=10):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.rmtree(OUTPUT_DIR, ignore_errors=True)
+    OUTPUT_DIR.mkdir(parents=True)
     filename = Path(dataset).name
     shutil.copy(dataset, DATA_DIR / filename)
 
     messages = [{"role": "user", "content": question}]
 
     for _ in range(max_steps):
+        yield "thinking", None
         response = client.messages.create(
             model=MODEL,
             max_tokens=4000,
@@ -51,15 +54,16 @@ def ask(dataset, question, max_steps=10):
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason != "tool_use":
-            return "".join(b.text for b in response.content if b.type == "text")
+            yield "answer", "".join(b.text for b in response.content if b.type == "text")
+            return
 
         results = []
         for block in response.content:
             if block.type == "tool_use":
                 code = block.input["code"]
-                print(f"\n--- Ejecutando ---\n{code}\n")
+                yield "code", code
                 output = run_code(code, DATA_DIR, OUTPUT_DIR)
-                print(output[:1000])
+                yield "output", output
                 results.append({
                     "type": "tool_result",
                     "tool_use_id": block.id,
@@ -67,11 +71,18 @@ def ask(dataset, question, max_steps=10):
                 })
         messages.append({"role": "user", "content": results})
 
-    return "Límite de pasos alcanzado sin respuesta final."
+    yield "answer", "Límite de pasos alcanzado sin respuesta final."
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print('Uso: python agent.py datos.csv "tu pregunta"')
         sys.exit(1)
-    print("\n=== Respuesta ===\n" + ask(sys.argv[1], sys.argv[2]))
+
+    for kind, content in run_agent(sys.argv[1], sys.argv[2]):
+        if kind == "code":
+            print(f"\n--- Ejecutando ---\n{content}\n")
+        elif kind == "output":
+            print(content[:1000])
+        else:
+            print("\n=== Respuesta ===\n" + content)
