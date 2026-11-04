@@ -12,12 +12,28 @@ Agente que responde preguntas sobre un dataset escribiendo y ejecutando su propi
 
 ## Sandbox
 
-Cada ejecución corre en un contenedor nuevo con:
+El código lo genera un LLM, así que se trata como no confiable. Cada ejecución corre en un contenedor nuevo que se destruye al terminar:
 
-- Sin acceso a red
-- Límite de 512 MB de memoria y 1 CPU
-- Timeout de 60 segundos
-- Solo acceso a la carpeta de trabajo
+| Riesgo | Protección |
+|---|---|
+| Exfiltrar datos o descargar malware | Sin acceso a red |
+| Modificar el dataset original | `/data` montado en solo lectura |
+| Escribir en el sistema | Sistema de archivos de solo lectura; solo `/output` y `/tmp` son escribibles |
+| Escalada de privilegios | Usuario sin privilegios (uid 1000), `cap_drop=ALL`, `no-new-privileges` |
+| Agotar recursos (bucles, fork bombs) | 512 MB de RAM, 1 CPU, máximo 64 procesos, timeout de 60 s |
+
+`test_sandbox.py` intenta cada uno de estos ataques y comprueba que fallan:
+
+```
+--- Acceso a internet ---
+urllib.error.URLError: <urlopen error [Errno -3] Temporary failure in name resolution>
+--- Modificar los datos ---
+OSError: [Errno 30] Read-only file system: '/data/hack.txt'
+--- Escribir en el sistema ---
+OSError: [Errno 30] Read-only file system: '/etc/hack.txt'
+--- Usuario (0 = root) ---
+1000
+```
 
 ## Ejemplo
 
@@ -25,7 +41,7 @@ Cada ejecución corre en un contenedor nuevo con:
 python agent.py data/tips.csv "¿Qué día se dejan más propinas en proporción a la cuenta? Haz un gráfico."
 ```
 
-En el primer intento el código falla por una variable no definida; el agente lee el error y lo corrige en el siguiente paso.
+El agente explora primero las columnas, calcula la propina en porcentaje por día y genera el gráfico. Además avisa de que el viernes tiene pocas muestras y de que no ha hecho contraste estadístico.
 
 ![Propina por día](docs/ejemplo.png)
 
@@ -52,5 +68,6 @@ ANTHROPIC_API_KEY=tu_api_key
 
 - `agent.py`: bucle del agente y uso de herramientas
 - `sandbox.py`: ejecución aislada en Docker
+- `test_sandbox.py`: pruebas de seguridad del sandbox
 - `Dockerfile`: imagen del sandbox
-- `data/`: datasets de ejemplo
+- `data/`: datasets de

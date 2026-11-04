@@ -11,13 +11,14 @@ load_dotenv()
 client = anthropic.Anthropic()
 
 MODEL = "claude-sonnet-5-5"
-WORKSPACE = Path("workspace")
+DATA_DIR = Path("workspace/data")
+OUTPUT_DIR = Path("workspace/output")
 
-SYSTEM = """Eres un analista de datos. Tienes un dataset en /workspace/{file}.
+SYSTEM = """Eres un analista de datos. Tienes un dataset en /data/{file} (solo lectura).
 Para analizarlo, escribe código Python y ejecútalo con la herramienta run_python.
-Tienes pandas y matplotlib. Guarda los gráficos como PNG en /workspace.
-Si el código falla, lee el error y corrígelo.
+Tienes pandas y matplotlib. Guarda los gráficos como PNG en /output.
 Cada ejecución empieza desde cero: carga los datos e importa las librerías en cada bloque.
+Si el código falla, lee el error y corrígelo.
 Cuando tengas la respuesta, explica las conclusiones en español, de forma breve."""
 
 TOOLS = [{
@@ -32,9 +33,10 @@ TOOLS = [{
 
 
 def ask(dataset, question, max_steps=10):
-    WORKSPACE.mkdir(exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     filename = Path(dataset).name
-    shutil.copy(dataset, WORKSPACE / filename)
+    shutil.copy(dataset, DATA_DIR / filename)
 
     messages = [{"role": "user", "content": question}]
 
@@ -56,7 +58,7 @@ def ask(dataset, question, max_steps=10):
             if block.type == "tool_use":
                 code = block.input["code"]
                 print(f"\n--- Ejecutando ---\n{code}\n")
-                output = run_code(code, WORKSPACE)
+                output = run_code(code, DATA_DIR, OUTPUT_DIR)
                 print(output[:1000])
                 results.append({
                     "type": "tool_result",
