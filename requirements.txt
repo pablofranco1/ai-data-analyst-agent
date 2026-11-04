@@ -1,4 +1,5 @@
 anthropic
 pandas
 matplotlib
-docker
+Docker
+python-dotenv
