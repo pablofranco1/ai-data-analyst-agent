@@ -1,5 +1,7 @@
 # AI Data Analyst Agent
 
+![tests](https://github.com/pablofranco1/ai-data-analyst-agent/actions/workflows/tests.yml/badge.svg)
+
 Agente que responde preguntas sobre un dataset escribiendo y ejecutando su propio código Python. El código se ejecuta en un contenedor Docker aislado, así que nunca toca la máquina anfitriona.
 
 ![Demo](docs/demo.gif)
